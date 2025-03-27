@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码生成器</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- 添加xlsx.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3e5f5; /* 浅紫色背景 */
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        .logo img {
+            height: 40px;
+            margin-right: 10px;
+        }
+        .logo-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: #7e57c2;
+        }
+        .nav {
+            display: flex;
+        }
+        .nav-item {
+            margin: 0 10px;
+            color: #666;
+            text-decoration: none;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #666;
+        }
+        .tab.active {
+            color: #7e57c2;
+            border-bottom: 2px solid #7e57c2;
+        }
+        .input-area {
+            margin-bottom: 20px;
+        }
+        .input-area textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            min-height: 100px;
+            box-sizing: border-box;
+        }
+        .input-area input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            padding: 8px 15px;
+            background-color: #e0d3ee;
+            color: #7e57c2;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .generate-btn {
+            background-color: #7e57c2; /* 浅紫色 */
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .generate-btn:hover {
+            background-color: #5e35b1; /* 深一点的紫色 */
+        }
+        .result-area {
+            display: flex;
+            margin-top: 30px;
+        }
+        .qrcode-container {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            border-right: 1px solid #eee;
+        }
+        .options-container {
+            flex: 1;
+            padding: 20px;
+        }
+        .option-group {
+            margin-bottom: 15px;
+        }
+        .option-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #7e57c2;
+        }
+        .option-items {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .option-item {
+            margin-right: 10px;
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            background-color: #f3e5f5;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .option-item.active {
+            background-color: #7e57c2;
+            color: white;
+        }
+        #qrcode {
+            margin: 0 auto;
+            padding: 10px;
+            background: white;
+            border: 1px solid #eee;
+            display: inline-block;
+        }
+        .download-btn {
+            margin-top: 15px;
+            background-color: #7e57c2;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-text">二维码生成器</div>
+        </div>
+        <div class="nav">
+            <a href="#" class="nav-item">首页</a>
+            <a href="#" class="nav-item">帮助</a>
+            <a href="#" class="nav-item">关于</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="text">文本</div>
+            <div class="tab" data-tab="url">网址</div>
+            <div class="tab" data-tab="image">图片</div>
+            <div class="tab" data-tab="file">文件</div>
+            <div class="tab" data-tab="batch">批量生成</div> <!-- 新增批量生成选项卡 -->
+        </div>
+
+        <div class="input-area">
+            <textarea id="content" placeholder="请输入文字内容或网址..."></textarea>
+            <input type="file" id="file-input" accept="image/*">
+            <label for="file-input" class="file-label" style="display: none;">选择文件</label>
+        </div>
+
+        <div class="batch-container" id="batch-container">
+            <button class="batch-btn" id="online-edit">在线表格批量制作</button>
+            <button class="batch-btn" id="upload-excel">上传Excel批量制作</button>
+            <input type="file" id="excel-input" accept=".xlsx, .xls" style="display: none;">
+            
+            <!-- 添加在线表格编辑区域 -->
+            <div class="online-table-container" id="online-table-container">
+                <h3>在线编辑表格</h3>
+                <p>请在下方表格中输入数据，每行将生成一个二维码</p>
+                <table class="online-table" id="online-table">
+                    <thead>
+                        <tr>
+                            <th>内容</th>
+                            <th>标签(可选)</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td><input type="text" class="content-input" placeholder="输入文字或网址"></td>
+                            <td><input type="text" class="label-input" placeholder="二维码标签"></td>
+                            <td><button class="batch-btn delete-row">删除</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="add-row-btn" id="add-row">添加行</button>
+                <button class="batch-btn" id="generate-batch">批量生成二维码</button>
+            </div>
+            
+            <!-- 添加批量生成结果区域 -->
+            <div class="batch-result-container" id="batch-result-container">
+                <h3>批量生成结果</h3>
+                <div class="batch-qrcodes" id="batch-qrcodes"></div>
+                <button class="download-all-btn" id="download-all">下载所有二维码</button>
+            </div>
+        </div>
+
+        <button class="generate-btn" id="generate">生成二维码</button>
+
+        <div class="result-area">
+            <div class="qrcode-container">
+                <div id="qrcode"></div>
+                <button class="download-btn" id="download">下载二维码</button>
+            </div>
+            <div class="options-container">
+                <div class="option-group">
+                    <div class="option-title">尺寸</div>
+                    <div class="option-items">
+                        <div class="option-item active" data-size="5">小</div>
+                        <div class="option-item" data-size="8">中</div>
+                        <div class="option-item" data-size="10">大</div>
+                    </div>
+                </div>
+                <div class="option-group">
+                    <div class="option-title">纠错级别</div>
+                    <div class="option-items">
+                        <div class="option-item active" data-level="L">低</div>
+                        <div class="option-item" data-level="M">中</div>
+                        <div class="option-item" data-level="Q">高</div>
+                        <div class="option-item" data-level="H">最高</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 选项卡切换
+        const tabs = document.querySelectorAll('.tab');
+        const fileInput = document.getElementById('file-input');
+        const fileLabel = document.querySelector('.file-label');
+        const textarea = document.getElementById('content');
+        const batchContainer = document.getElementById('batch-container');
+        const excelInput = document.getElementById('excel-input');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const tabType = tab.getAttribute('data-tab');
+                if (tabType === 'image' || tabType === 'file') {
+                    textarea.style.display = 'none';
+                    fileLabel.style.display = 'inline-block';
+                    batchContainer.style.display = 'none';
+                } else if (tabType === 'batch') {
+                    textarea.style.display = 'none';
+                    fileLabel.style.display = 'none';
+                    batchContainer.style.display = 'block';
+                } else {
+                    textarea.style.display = 'block';
+                    fileLabel.style.display = 'none';
+                    batchContainer.style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('upload-excel').addEventListener('click', () => {
+            excelInput.click();
+        });
+
+        excelInput.addEventListener('change', handleExcelUpload);
+
+        document.getElementById('online-edit').addEventListener('click', () => {
+            // 显示在线表格编辑区域
+            document.getElementById('online-table-container').style.display = 'block';
+            // 隐藏批量结果区域
+            document.getElementById('batch-result-container').style.display = 'none';
+        });
+
+        // 添加行
+        document.getElementById('add-row').addEventListener('click', () => {
+            const tableBody = document.getElementById('table-body');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td><input type="text" class="content-input" placeholder="输入文字或网址"></td>
+                <td><input type="text" class="label-input" placeholder="二维码标签"></td>
+                <td><button class="batch-btn delete-row">删除</button></td>
+            `;
+            tableBody.appendChild(newRow);
+            
+            // 为新添加的删除按钮添加事件监听
+            newRow.querySelector('.delete-row').addEventListener('click', function() {
+                this.closest('tr').remove();
+            });
+        });
+        
+        // 为初始行的删除按钮添加事件监听
+        document.querySelectorAll('.delete-row').forEach(button => {
+            button.addEventListener('click', function() {
+                this.closest('tr').remove();
+            });
+        });
+
+        // 批量生成二维码
+        document.getElementById('generate-batch').addEventListener('click', () => {
+            const contentInputs = document.querySelectorAll('.content-input');
+            const labelInputs = document.querySelectorAll('.label-input');
+            const batchQrcodes = document.getElementById('batch-qrcodes');
+            const batchResultContainer = document.getElementById('batch-result-container');
+            
+            // 清空之前的结果
+            batchQrcodes.innerHTML = '';
+            
+            // 获取选中的尺寸和纠错级别
+            const size = document.querySelector('.option-item[data-size].active').getAttribute('data-size');
+            const level = document.querySelector('.option-item[data-level].active').getAttribute('data-level');
+            
+            // 检查是否有内容
+            let hasContent = false;
+            contentInputs.forEach(input => {
+                if (input.value.trim()) {
+                    hasContent = true;
+                }
+            });
+            
+            if (!hasContent) {
+                alert('请至少输入一行内容');
+                return;
+            }
+            
+            // 生成二维码
+            for (let i = 0; i < contentInputs.length; i++) {
+                const content = contentInputs[i].value.trim();
+                const label = labelInputs[i].value.trim();
+                
+                if (content) {
+                    const qrcode = qrcode_generate(4, level);
+                    qrcode.addData(content);
+                    qrcode.make();
+                    
+                    const qrcodeItem = document.createElement('div');
+                    qrcodeItem.className = 'batch-qrcode-item';
+                    qrcodeItem.innerHTML = qrcode.createImgTag(size, 0);
+                    
+                    // 添加标签
+                    if (label) {
+                        const labelElement = document.createElement('div');
+                        labelElement.className = 'batch-qrcode-label';
+                        labelElement.textContent = label;
+                        qrcodeItem.appendChild(labelElement);
+                    }
+                    
+                    // 添加下载按钮
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-btn';
+                    downloadBtn.textContent = '下载';
+                    downloadBtn.addEventListener('click', () => {
+                        const img = qrcodeItem.querySelector('img');
+                        const link = document.createElement('a');
+                        link.download = label ? `${label}.png` : '二维码.png';
+                        link.href = img.src;
+                        link.click();
+                    });
+                    qrcodeItem.appendChild(downloadBtn);
+                    
+                    batchQrcodes.appendChild(qrcodeItem);
+                }
+            }
+            
+            // 显示结果区域
+            batchResultContainer.style.display = 'block';
+        });
+
+        // 下载所有二维码
+        document.getElementById('download-all').addEventListener('click', () => {
+            const qrcodeItems = document.querySelectorAll('.batch-qrcode-item');
+            if (qrcodeItems.length === 0) {
+                alert('没有可下载的二维码');
+                return;
+            }
+            
+            // 创建一个zip文件
+            alert('下载所有二维码功能需要集成JSZip库，此处仅作为示例');
+            // 实际实现需要引入JSZip库
+        });
+
+        // 处理Excel文件上传
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                alert('请选择Excel文件');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // 获取第一个工作表
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                
+                // 将工作表转换为JSON
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // 清空在线表格
+                const tableBody = document.getElementById('table-body');
+                tableBody.innerHTML = '';
+                
+                // 填充在线表格
+                jsonData.forEach(row => {
+                    const content = row.Content || row.content || row['内容'] || '';
+                    const label = row.Label || row.label || row['标签'] || '';
+                    
+                    const newRow = document.createElement('tr');
+                    newRow.innerHTML = `
+                        <td><input type="text" class="content-input" value="${content}" placeholder="输入文字或网址"></td>
+                        <td><input type="text" class="label-input" value="${label}" placeholder="二维码标签"></td>
+                        <td><button class="batch-btn delete-row">删除</button></td>
+                    `;
+                    tableBody.appendChild(newRow);
+                    
+                    // 为新添加的删除按钮添加事件监听
+                    newRow.querySelector('.delete-row').addEventListener('click', function() {
+                        this.closest('tr').remove();
+                    });
+                });
+                
+                // 显示在线表格编辑区域
+                document.getElementById('online-table-container').style.display = 'block';
+                // 隐藏批量结果区域
+                document.getElementById('batch-result-container').style.display = 'none';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 尺寸和纠错级别选项
+        const sizeOptions = document.querySelectorAll('[data-size]');
+        const levelOptions = document.querySelectorAll('[data-level]');
+
+        sizeOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                sizeOptions.forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+            });
+        });
+
+        levelOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                levelOptions.forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+            });
+        });
+
+        // 生成二维码
+        document.getElementById('generate').addEventListener('click', generateQRCode);
+        
+        function generateQRCode() {
+            const content = document.getElementById('content').value;
+            const activeTab = document.querySelector('.tab.active').getAttribute('data-tab');
+            const size = document.querySelector('.option-item[data-size].active').getAttribute('data-size');
+            const level = document.querySelector('.option-item[data-level].active').getAttribute('data-level');
+            
+            if (!content && (activeTab === 'text' || activeTab === 'url')) {
+                alert('请输入内容');
+                return;
+            }
+            
+            if ((activeTab === 'image' || activeTab === 'file') && !fileInput.files[0]) {
+                alert('请选择文件');
+                return;
+            }
+            
+            const qrcode = qrcode_generate(4, level);
+            qrcode.addData(content);
+            qrcode.make();
+            
+            const qrcodeElement = document.getElementById('qrcode');
+            qrcodeElement.innerHTML = qrcode.createImgTag(size, 0);
+        }
+        
+        // 下载二维码
+        document.getElementById('download').addEventListener('click', () => {
+            const qrcodeImg = document.querySelector('#qrcode img');
+            if (!qrcodeImg) {
+                alert('请先生成二维码');
+                return;
+            }
+            
+            const link = document.createElement('a');
+            link.download = '二维码.png';
+            link.href = qrcodeImg.src;
+            link.click();
+        });
+        
+        // 初始化qrcode库
+        function qrcode_generate(typeNumber, errorCorrectionLevel) {
+            qrcode = qrcode || {};
+            qrcode.stringToBytes = qrcode.stringToBytes || function(s) {
+                var bytes = [];
+                for (var i = 0; i < s.length; i++) {
+                    var c = s.charCodeAt(i);
+                    bytes.push(c & 0xff);
+                }
+                return bytes;
+            };
+            
+            return qrcode(typeNumber || 4, errorCorrectionLevel || 'M');
+        }
+    </script>
+</body>
+</html>
